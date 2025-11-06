@@ -36,10 +36,5 @@ jobs:
       - name: Run New Container
         run: |
           echo "Starting new container..."
-          docker run -d --rm \
-            -p 8000:8000 \
-            -p 8501:8501 \
-            --name rag-chatbot-app \
-            --gpus all \
-            rag-chatbot:latest
+          docker run -d --rm -p 8000:8000 -p 8501:8501 --name rag-chatbot-app --gpus all rag-chatbot:latest
         shell: pwsh
