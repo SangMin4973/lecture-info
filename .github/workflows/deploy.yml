@@ -1,45 +1,7 @@
-name: Build and Deploy RAG Chatbot Docker Container
-
-# 1. 트리거 시점: 'main' 브랜치에 push가 발생했을 때
-on:
-  push:
-    branches:
-      - main
-
+name: Test Runner
+on: [push]
 jobs:
-  build-and-deploy:
-    # 2. 실행 환경: 우리가 Windows에 등록한 'self-hosted' 러너
-    runs-on: self-hosted
-
+  check:
+    runs-on: ubuntu-latest
     steps:
-      # 3. 코드 체크아웃: Windows 서버로 최신 소스코드 다운로드
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # 4. Docker 이미지 빌드
-      # (Windows PowerShell 환경에서 docker.exe 실행)
-      - name: Build Docker Image
-        run: |
-          docker build -t rag-chatbot:latest .
-        shell: pwsh
-
-      # 5. 기존 컨테이너 중지 및 삭제
-      # (실패해도 다음 단계로 진행)
-      - name: Stop and Remove Old Container
-        run: |
-          docker stop rag-chatbot-app
-          docker rm rag-chatbot-app
-        shell: pwsh
-        continue-on-error: true
-
-      # 6. 새 컨테이너 실행
-      - name: Run New Container
-        run: |
-          echo "Starting new container..."
-          docker run -d --rm \
-            -p 8000:8000 \
-            -p 8501:8501 \
-            --name rag-chatbot-app \
-            --gpus all \  # <-- [중요!] 컨테이너에 NVIDIA GPU 연결
-            rag-chatbot:latest
-        shell: pwsh
+      - run: echo "Runner works!"
