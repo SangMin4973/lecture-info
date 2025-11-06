@@ -1,0 +1,17 @@
+# 예시:
+fastapi
+uvicorn
+streamlit
+requests
+torch
+transformers
+langchain
+langchain-community
+langchain-huggingface
+chromadb
+pymupdf4llm
+bitsandbytes
+accelerate
+sentence-transformers
+rank_bm25
+# ... (실습에 사용된 라이브러리)
