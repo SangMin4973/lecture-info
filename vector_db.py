@@ -61,8 +61,8 @@ def parse_lecture_info(text_block):
     """단일 강의 정보 블록 텍스트를 파싱하여 Dictionary 형태로 반환합니다."""
     metadata = {}
     
-    # '필드명:값' 형태의 쌍이 ' / '로 분리되어 있다고 가정
-    fields = text_block.strip().split('/')
+    # '필드명:값' 형태의 쌍이 ' - '로 분리되어 있다고 가정
+    fields = text_block.strip().split('-')
     
     for field in fields:
         # 각 필드는 '키:값' 형태로 되어 있음. 콜론을 기준으로 분리
