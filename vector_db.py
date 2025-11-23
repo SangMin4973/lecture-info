@@ -8,7 +8,6 @@ from tqdm import tqdm
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.retrievers import BM25Retriever
 import chromadb
 from langchain_core.documents import Document
 
@@ -196,16 +195,6 @@ if doc_list:
     print("⏳ 벡터 DB에 문서 추가 중...")
     vectordb.add_documents(split_docs_rev, embedding=embedding_model)
     print("✅ 벡터 DB 저장 완료.")
-
-    # 검색기 초기화
-    retriever = vectordb.as_retriever(
-        search_kwargs={'k': 5}
-    )
-    bm25_retriever = BM25Retriever.from_documents(
-        documents=split_docs_rev,
-        k=5,
-    )
-    print("🔍 검색기 초기화 완료.")
 
 else:
     print("🛑 로드할 문서가 없습니다. 데이터 파일(.txt)을 확인하세요.")
