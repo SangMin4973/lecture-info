@@ -29,5 +29,8 @@ EXPOSE 8501
 
 # 8. 시작 스크립트 실행
 COPY start.sh /start.sh
+RUN apt-get update && apt-get install -y dos2unix
+RUN dos2unix /start.sh
 RUN chmod +x /start.sh
+
 CMD ["/start.sh"]
