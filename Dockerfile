@@ -18,8 +18,8 @@ WORKDIR /app
 # 5. 의존성 설치 (빌드 캐시 활용을 위해 코드를 복사하기 전 실행)
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt \
-    pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+    pip install --no-cache-dir -r requirements.txt
+    
 
 # 6. 애플리케이션 코드 복사
 COPY . .
@@ -29,6 +29,7 @@ EXPOSE 8000
 EXPOSE 8501
 
 # 8. 시작 스크립트 실행
+RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 COPY start.sh /start.sh
 RUN apt-get update && apt-get install -y dos2unix
 RUN dos2unix /start.sh
