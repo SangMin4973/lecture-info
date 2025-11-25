@@ -10,3 +10,9 @@ def parse_lecture_info(text_block):
             metadata[key.strip()] = value.strip()
     return metadata
 
+def add_title(doc):
+    """Document 객체에 Title 정보를 본문에 추가"""
+    title = doc.metadata.get('title', '')
+    if title:
+        doc.page_content = f"Title : {title}\n\n{doc.page_content}"
+    return doc
