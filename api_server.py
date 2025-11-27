@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
 import os
+from utils.chatbot import *
 
 # Pydantic 모델: 요청 Body 형식 정의
 class ChatRequest(BaseModel):
@@ -23,7 +24,7 @@ def handle_chat(request: ChatRequest):
     print(f"Received query: {request.query}")
     
     # 1주 차: 간단한 응답 로직
-    response_text = f"서버 응답: Hello, {request.query}"
+    response_text = f"서버 응답: Hello, {chatbot(request.query)}"
     
     return ChatResponse(answer=response_text)
 
