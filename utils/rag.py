@@ -25,3 +25,19 @@ def _load_retriever():
     )
     _retriever = vectordb.as_retriever(search_kwargs={'k': 3}) # k값은 조절 가능
     return _retriever
+
+def retrieve(query):
+    """
+    chatbot.py에서 호출하는 함수.
+    질문을 받아 관련 문서를 텍스트로 합쳐서 반환합니다.
+    """
+    retriever = _load_retriever()
+    if not retriever:
+        return ""
+        
+    # 문서 검색
+    docs = retriever.invoke(query)
+    
+    # 검색된 문서들의 내용을 하나의 문자열로 합침 (List[Document] -> str)
+    context_text = "\n\n".join([doc.page_content for doc in docs])
+    return context_text
