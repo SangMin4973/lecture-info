@@ -29,3 +29,14 @@ def apply_chat_template(tokenizer, content):
         add_generation_prompt=True
     )
     return prompt
+
+def extract_answer(generated_text):
+    """
+    모델이 생성한 전체 텍스트에서 '답변' 부분만 추출합니다.
+    (Qwen 등은 프롬프트 뒤에 답변을 이어 붙이므로, 필요한 경우 파싱 로직 추가)
+    """
+    # ChatML 특성상 <|im_start|>assistant 이후가 답변이 될 수 있음
+    # 여기서는 간단하게 처리하거나, 모델 특성에 맞춰 split
+    if "<|im_start|>assistant" in generated_text:
+        return generated_text.split("<|im_start|>assistant")[-1].strip()
+    return generated_text
