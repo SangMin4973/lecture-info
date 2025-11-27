@@ -22,5 +22,39 @@ model = AutoModelForCausalLM.from_pretrained(
 
 model.eval()
 
+# 모델 저장
 model.save_pretrained('./model/')
 
+# 토크나이저 저장 
+tokenizer.save_pretrained('./model/')
+
+def generate_response(query, context):
+    """
+    질문(query)과 검색된 문서(context)를 받아 답변을 생성합니다.
+    """
+    # 프롬프트 템플릿 (Qwen 스타일에 맞게 조정 가능)
+    prompt = f"""당신은 강의 추천을 돕는 AI 조교입니다. 아래 정보를 바탕으로 학생의 질문에 친절하게 답해주세요.
+
+[강의 정보]
+{context}
+
+[질문]
+{query}
+
+[답변]
+"""
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    
+    # 답변 생성
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs, 
+            max_new_tokens=512,  # 답변 길이 조절
+            temperature=0.3,     # 창의성 조절
+            repetition_penalty=1.1
+        )
+    
+    response_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    # 프롬프트 부분 제거하고 답변만 반환하는 전처리 
+    return response_text.replace(prompt, "").strip()

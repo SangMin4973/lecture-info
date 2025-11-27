@@ -11,7 +11,7 @@ import os
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000/chat")
 
 st.set_page_config(page_title="RAG 챗봇 (Demo)", layout="centered")
-st.title("RAG 챗봇 1주차: 'Hello, World' 뼈대")
+st.title("RAG 챗봇 3주차: 'RAG 구현 시험 중")
 
 # 채팅 기록을 위한 session_state 초기화
 if "messages" not in st.session_state:
@@ -37,7 +37,7 @@ if prompt := st.chat_input("메시지를 입력하세요..."):
                 API_URL, 
                 data=json.dumps(payload), 
                 headers={"Content-Type": "application/json"}, 
-                timeout=30
+                timeout=600
             )
             
             if response.status_code == 200:

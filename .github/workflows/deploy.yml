@@ -21,7 +21,7 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build -t rag-chatbot:latest .
-        shell: bash
+        shell: cmd
 
       # 5. 기존 컨테이너 중지 및 삭제
       # (실패해도 다음 단계로 진행)
@@ -29,7 +29,7 @@ jobs:
         run: |
           docker stop rag-chatbot-app
           docker rm rag-chatbot-app
-        shell: bash
+        shell: cmd
         continue-on-error: true
 
       # 6. 새 컨테이너 실행
@@ -37,4 +37,4 @@ jobs:
         run: |
           echo "Starting new container..."
           docker run -d --rm -p 8000:8000 -p 8501:8501 --name rag-chatbot-app --gpus all rag-chatbot:latest
-        shell: bash
+        shell: cmd
