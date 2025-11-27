@@ -7,26 +7,21 @@ OUTPUT_DIR = './rag_output'
 VECTORDB_DIR = os.path.join(OUTPUT_DIR, 'vectordb')
 COLLECTION_NAME = 'lecture_info'
 
-def get_retriever(k=5):
-    """저장된 Vector DB를 로드하고 검색기를 반환합니다."""
-    try:
-        embedding_model = get_embedding_model()
-        
-        if not os.path.exists(VECTORDB_DIR):
-            print("⚠️ Vector DB 경로가 없습니다. vector_db.py를 먼저 실행하세요.")
-            return None
+_retriever = None
 
-        vectordb = Chroma(
-            persist_directory=VECTORDB_DIR,
-            collection_name=COLLECTION_NAME,
-            embedding_function=embedding_model
-        )
-        print("✅ Chroma DB 로드 완료.")
-        return vectordb.as_retriever(search_kwargs={'k': k})
+def _load_retriever():
+    """내부적으로만 사용하는 로더"""
+    global _retriever
+    if _retriever is not None:
+        return _retriever
         
-    except Exception as e:
-        print(f"❌ Retriever 로드 실패: {e}")
-        return None
-
-# 싱글톤처럼 모듈 로드 시 바로 준비 (선택 사항)
-retriever = get_retriever()
+    print("🚀 Vector DB 로딩 시작...")
+    embedding_model = get_embedding_model() # CPU/GPU 자동 감지
+    
+    vectordb = Chroma(
+        persist_directory=VECTORDB_DIR,
+        collection_name=COLLECTION_NAME,
+        embedding_function=embedding_model
+    )
+    _retriever = vectordb.as_retriever(search_kwargs={'k': 3}) # k값은 조절 가능
+    return _retriever
