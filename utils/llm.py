@@ -1,54 +1,54 @@
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, BitsAndBytesConfig
 
-# --- 설정 ---
-MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"  # CPU용 경량 모델
+MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
 CACHE_DIR = "./"
-MODEL_DIR = "./model/"
 
-# --- 전역 변수 (import 시 로드됨) ---
-print(f"🚀 LLM 모델 로드 시작: {MODEL_NAME}")
-try:
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        torch_dtype=torch.float32,
-        device_map="auto",
-        cache_dir=CACHE_DIR
-    )
-    # 모델 저장 (최초 1회 실행 시 유효, 이후엔 로드만 함)
-    # tokenizer.save_pretrained(MODEL_DIR)
-    # model.save_pretrained(MODEL_DIR)
-    print("✅ LLM 모델 로드 완료.")
-except Exception as e:
-    print(f"❌ LLM 로드 실패: {e}")
-    model = None
-    tokenizer = None
+# 전역 변수
+_pipe = None
+_tokenizer = None
 
-def generate_response(query, context):
-    """질문(query)과 문맥(context)을 받아 답변을 생성합니다."""
-    if model is None or tokenizer is None:
-        return "모델이 로드되지 않았습니다."
-
-    prompt = f"""당신은 강의 추천을 돕는 AI 조교입니다. 아래 정보를 바탕으로 질문에 답해주세요.
-
-[정보]
-{context}
-
-[질문]
-{query}
-
-[답변]
-"""
-    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+def get_llm():
+    """
+    chatbot.py에서 호출하는 함수.
+    GPU 설정이 적용된 Pipeline 객체와 Tokenizer를 반환합니다.
+    """
+    global _pipe, _tokenizer
     
-    with torch.no_grad():
-        outputs = model.generate(
-            **inputs, 
-            max_new_tokens=256,
-            temperature=0.7,
-            repetition_penalty=1.1
+    if _pipe is not None and _tokenizer is not None:
+        return _pipe, _tokenizer
+        
+    print(f"🚀 LLM 모델 로딩 시작 (GPU Mode)... ({MODEL_NAME})")
+    try:
+        # 1. 4비트 양자화 설정 (GPU 전용)
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float16, # GPU 연산 가속
+            bnb_4bit_quant_type="nf4"
         )
-    
-    response_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return response_text.replace(prompt, "").strip()
+
+        # 2. 토크나이저 로드
+        _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        
+        # 3. 모델 로드 (GPU 설정 적용)
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL_NAME,
+            quantization_config=bnb_config, # 4비트 적용
+            device_map="auto",              # GPU 자동 할당
+            trust_remote_code=True,
+            cache_dir=CACHE_DIR
+        )
+
+        # 4. 파이프라인 생성
+        _pipe = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=_tokenizer
+        )
+        print("✅ LLM(Pipeline) 로드 완료! (GPU 가속 활성화)")
+        
+    except Exception as e:
+        print(f"❌ LLM 로드 실패: {e}")
+        return None, None
+
+    return _pipe, _tokenizer
