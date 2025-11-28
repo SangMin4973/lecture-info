@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import torch
 from tqdm import tqdm
+import pickle
 
 # LangChain 및 관련 모듈
 from langchain_community.vectorstores import Chroma
@@ -11,8 +12,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 import chromadb
 from langchain_core.documents import Document
 
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))   # final-project-a-lecture-info/
+
 # --- 경로 및 설정 ---
-output_dir = './rag_output'
+output_dir = os.path.join(BASE_DIR, "rag_output")
 collection_name = 'lecture_info'
 model_name = "Snowflake/snowflake-arctic-embed-l-v2.0"
 cache_folder = './'
@@ -21,6 +24,7 @@ cache_folder = './'
 vectordb_dir = os.path.join(output_dir, 'vectordb')
 os.makedirs(vectordb_dir, exist_ok=True)
 client = chromadb.PersistentClient(path=vectordb_dir)
+data_path = os.path.join(BASE_DIR, "data", "text_data.txt")
 
 # 컬렉션 삭제 (재실행 대비)
 try:
@@ -34,18 +38,17 @@ except Exception as e:
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 print(f"🛠️ Embedding device: {device}")
 
-# SentenceTransformerEmbeddings에 전달할 최종 model_kwargs 구성 (오류 해결 반영)
-final_model_kwargs = {
-    "device": device,
-}
-if "cuda" in device:
-    final_model_kwargs["torch_dtype"] = torch.float16
+# # SentenceTransformerEmbeddings에 전달할 최종 model_kwargs 구성 (오류 해결 반영)
+# final_model_kwargs = {
+#     "device": device,
+# }
+# if "cuda" in device:
+#     final_model_kwargs["torch_dtype"] = torch.float16
 
 
 embedding_model = SentenceTransformerEmbeddings(
     model_name=model_name,
     cache_folder=cache_folder,
-    model_kwargs=final_model_kwargs,
     encode_kwargs={
         "normalize_embeddings": True,
         "prompt_name": "query"  # query prefix 자동 적용
@@ -55,6 +58,8 @@ embedding_model = SentenceTransformerEmbeddings(
 # --- 3. 데이터 로딩 및 전처리 함수 정의 (Pandas 로직 대신 텍스트 파싱 로직 적용) ---
 
 # 기존 set_form 함수와 get_docs_csv 함수는 사용하지 않으므로 삭제 또는 주석 처리했습니다.
+
+
 
 def parse_lecture_info(text_block):
     """단일 강의 정보 블록 텍스트를 파싱하여 Dictionary 형태로 반환합니다."""
@@ -102,11 +107,11 @@ def get_docs_from_file(file_path):
         
         # 문서의 주 내용은 '학습내용', '수업진행방식', '선수과목과수강요건' 그리고 강의평가를 조합
         page_content_parts = []
-
-        course_type = metadata.pop("이수구분", None)
+        
+        course_type = metadata.pop('이수구분', None)
         if course_type:
             page_content_parts.append(f"**이수구분:** {course_type}")
-        
+            
         # 1. 학습내용 추출 및 본문 추가 (pop)
         learning_content = metadata.pop('학습내용', None)
         if learning_content:
@@ -173,7 +178,8 @@ def add_title(doc):
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=102)
 
 # file_paths = get_file_paths('./data') # 기존 함수 대신 명시된 파일 경로 사용
-file_paths = ['./data/text_data.txt'] # 사용자 입력에 따라 파일 경로 고정
+
+file_paths = [data_path] # 사용자 입력에 따라 파일 경로 고정
 
 doc_list = []
 for file_path in tqdm(file_paths):
