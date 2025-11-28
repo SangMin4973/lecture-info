@@ -4,7 +4,8 @@ uvicorn
 streamlit
 requests
 transformers
-langchain
+langchain==1.0.8
+langchain-huggingface==1.0.1
 langchain-community
 langchain-huggingface
 chromadb
