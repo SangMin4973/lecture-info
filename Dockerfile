@@ -29,7 +29,8 @@ EXPOSE 8000
 EXPOSE 8501
 
 # 8. 시작 스크립트 실행
-RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+RUN pip install torch==2.9.1+cu126 --index-url https://download.pytorch.org/whl/cu126
+RUN pip install torchvision==0.20.1+cu126 --index-url https://download.pytorch.org/whl/cu126
 COPY start.sh /start.sh
 RUN apt-get update && apt-get install -y dos2unix
 RUN dos2unix /start.sh
