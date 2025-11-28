@@ -20,8 +20,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126
-    
+RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
 
 # 6. 애플리케이션 코드 복사
 COPY . .
