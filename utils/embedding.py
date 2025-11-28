@@ -15,9 +15,9 @@ def get_embedding_model(model_name="Snowflake/snowflake-arctic-embed-l-v2.0", ca
         "device": device,
     }
     
-    # GPU 사용 시 fp16 설정으로 메모리 절약
-    if "cuda" in device:
-        final_model_kwargs["torch_dtype"] = torch.float16
+    # # GPU 사용 시 fp16 설정으로 메모리 절약
+    # if "cuda" in device:
+    #     final_model_kwargs["torch_dtype"] = torch.float16
 
     # 모델 초기화
     embedding_model = SentenceTransformerEmbeddings(
