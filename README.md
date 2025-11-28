@@ -12,4 +12,3 @@ chatbot: 오픈소스SW개발의 강의평가는 아직 없습니다.
 -----
 ### 서비스링크
 http://192.168.63.230:8501
-./config.sh remove --token AVTEHCAZPP3G3KX7PJZ5EO3JDUWBQ
