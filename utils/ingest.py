@@ -104,6 +104,8 @@ def get_docs_from_file(file_path):
         
         course_name = metadata.get('강의명', '미정 강의')
         professor_name = metadata.get('교수명', '미상 교수')
+        department = metadata.get('학부명', None)
+        major = metadata.get('학과명', None)
         
         # 문서의 주 내용은 '학습내용', '수업진행방식', '선수과목과수강요건' 그리고 강의평가를 조합
         page_content_parts = []
@@ -153,7 +155,7 @@ def get_docs_from_file(file_path):
             # 남은 필드들과 'source', 'title'을 정리
             final_metadata = {
                 'source': file_path, 
-                'title': f"{course_name} ({professor_name})", 
+                'title': f"{department}-{major}-{course_name} ({professor_name})", 
                 **metadata 
             }
             
@@ -192,7 +194,10 @@ if doc_list:
     split_docs = text_splitter.split_documents(doc_list)
     # 청크 내용에 제목 추가
     split_docs_rev = [add_title(doc) for doc in split_docs]
+    for idx, doc in enumerate(doc_list):
+        doc.metadata["id"] = idx
     print(f"📚 총 {len(split_docs_rev)}개의 최종 청크가 생성되었습니다.")
+
     
     # Chroma 객체 생성 (임베딩 함수 및 persist_directory 설정)
     vectordb = Chroma(
