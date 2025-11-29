@@ -13,7 +13,7 @@ def chatbot(query: str):
     # 2) 프롬프트 생성 (utils.prompt 호출)
     full_prompt = build_prompt(query, info)
     prompt = apply_chat_template(tokenizer, full_prompt)
-
+    print(prompt)
     # 3) LLM 실행 (Pipeline 사용)
     # CPU라 느릴 수 있으니 max_new_tokens 조절 가능
     raw = pipe(prompt, max_new_tokens=256, do_sample=False)
