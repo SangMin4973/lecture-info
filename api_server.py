@@ -24,7 +24,7 @@ def handle_chat(request: ChatRequest):
     print(f"Received query: {request.query}")
     
     # 1주 차: 간단한 응답 로직
-    response_text = f"서버 응답: Hello, {chatbot(request.query)}"
+    response_text = f"{chatbot(request.query)}"
     
     return ChatResponse(answer=response_text)
 
