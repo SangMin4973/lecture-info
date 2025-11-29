@@ -35,31 +35,31 @@ LIGHT_THEME = {
     "text": "#2C2C2C",
     "user_bubble": "#257BFC",
     "bot_bubble": "#eaeaea",
-    "user_text" : "#FFFFFF",
-    "lecturebot" : lecturebot_light
+    "user_text": "#FFFFFF",
+    "lecturebot": lecturebot_light,
+    "placeholder": "#888888"
 }
 
 DARK_THEME = {
-    "bg": "#117FD6",
-    "side": "#117FD6",
-    "block": "#1A1A1A",
+    "bg": "#121212",
+    "side": "#121212",
+    "block": "#121212",
     "text": "#E5E5E5",
     "user_bubble": "#257BFC",
     "bot_bubble": "#2c2c2c",
-    "user_text" : "#FFFFFF",
-    "lecturebot" : lecturebot_dark
+    "user_text": "#FFFFFF",
+    "lecturebot": lecturebot_dark,
+    "placeholder": "#FFFFFF"
 }
 # -------------------------------------------------------------------------
 
-# 안전한 토글 + 커스텀 라벨 구현 시작 
-col_toggle, col_label = st.columns([0.3, 6]) 
+# 토글 + 라벨
+col_toggle, col_label = st.columns([0.3, 6])
 with col_toggle:
     mode = st.toggle("", key="dark_mode")
 
-# THEME는 토글 상태에 따라 결정
 THEME = DARK_THEME if mode else LIGHT_THEME
 
-# 커스텀 라벨(아이콘 + 텍스트) — 색상은 THEME["text"]로 제어
 icon = "🌙" if mode else "☀️"
 label_text = "다크모드" if mode else "라이트모드"
 with col_label:
@@ -73,7 +73,7 @@ with col_label:
         unsafe_allow_html=True
     )
 
-# Navbar
+# Navbar (항상 파란색 유지)
 st.markdown(f"""
     <div class="navbar">
         <img src="data:image/png;base64,{skhulogo3_b64}" class="navbar-logo">
@@ -83,57 +83,91 @@ st.markdown(f"""
 # CSS (THEME 적용)
 st.markdown(f"""
 <style>
-.stApp {{
-    background-color: {THEME["block"]};
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stHeader"],
+[data-testid="stToolbar"],
+[data-testid="stSidebar"],
+[data-testid="stBottom"] {{
+    background-color: {THEME["block"]} !important;
+    color: {THEME["text"]} !important;
 }}
 
 .navbar {{
     width: 100%;
-    background-color: {THEME["bg"]};
+    background-color: #117FD6;
     padding: 30px 0;
-    border-bottom: 1px solid {THEME["bg"]};
+    border-bottom: 1px solid #117FD6;
     text-align: center;
 }}
-
 .navbar-logo {{
     width: 150px;
     height: auto;
 }}
+
+/* 하단 전체 영역 다크 */
+[data-testid="stBottom"],
+[data-testid="stBottom"] * {{
+    background-color: {THEME["block"]} !important;
+    color: {THEME["text"]} !important;
+    border-color: #333 !important;
+    box-shadow: none !important;
+}}
+
+/* 입력창 및 placeholder */
+[data-testid="stChatInput"] {{
+    background-color: {THEME["block"]} !important;
+}}
+textarea[data-testid="stChatInput"] {{
+    background-color: {THEME["block"]} !important;
+    color: {THEME["text"]} !important;
+    border: 1px solid #444 !important;
+}}
+textarea::placeholder {{
+    color: {THEME["placeholder"]} !important;
+}}
+div[data-baseweb="textarea"] textarea::placeholder {{
+    color: {THEME["placeholder"]} !important;
+}}
+
+textarea[data-testid="stChatInput"]::placeholder {{
+    color: #FFFFFF !important;
+}}
+
+div[data-baseweb="textarea"],
+div[data-baseweb="input"] {{
+    background-color: {THEME["block"]} !important;
+    color: {THEME["text"]} !important;
+    border-color: #444 !important;
+}}
+div[data-baseweb="textarea"] > div {{
+    background-color: {THEME["block"]} !important;
+}}
+div[data-baseweb="textarea"] textarea {{
+    background-color: {THEME["block"]} !important;
+    color: {THEME["text"]} !important;
+}}
+
+::-webkit-scrollbar {{ width: 8px; }}
+::-webkit-scrollbar-track {{ background: #1A1A1A; }}
+::-webkit-scrollbar-thumb {{ background: #444; border-radius: 4px; }}
 
 .chat-row-left, .chat-row-right {{
     display: flex;
     align-items: flex-start;
     margin-bottom: 12px;
 }}
-
-.chat-row-right {{
-    justify-content: flex-end;
-}}
-
+.chat-row-right {{ justify-content: flex-end; }}
 .chat-icon {{
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    object-fit: cover;
+    width: 38px; height: 38px; border-radius: 50%; object-fit: cover;
 }}
-
 .chat-bubble {{
-    padding: 12px 18px;
-    border-radius: 18px;
-    max-width: 70%;
-    margin: 0 10px;
-    display: inline-block;
+    padding: 12px 18px; border-radius: 18px; max-width: 70%;
+    margin: 0 10px; display: inline-block;
 }}
+.user-bubble {{ background: {THEME["user_bubble"]}; color: {THEME["user_text"]}; }}
+.bot-bubble {{ background: {THEME["bot_bubble"]}; color: {THEME["text"]}; }}
 
-.user-bubble {{
-    background: {THEME["user_bubble"]};
-    color: {THEME["user_text"]};
-}}
-
-.bot-bubble {{
-    background: {THEME["bot_bubble"]};
-    color: {THEME["text"]};
-}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -149,14 +183,11 @@ with col2:
         unsafe_allow_html=True
     )
 
-# Spacer
 st.markdown("<div style='margin:40px;'></div>", unsafe_allow_html=True)
 
-# Messages state
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Render messages
 for msg in st.session_state.messages:
     if msg["role"] == "assistant":
         st.markdown(
@@ -179,7 +210,6 @@ for msg in st.session_state.messages:
             unsafe_allow_html=True,
         )
 
-# Chat input
 prompt = st.chat_input("메시지를 입력하세요...")
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
