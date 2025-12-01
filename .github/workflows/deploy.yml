@@ -29,8 +29,7 @@ jobs:
       # (실패해도 다음 단계로 진행)
       - name: Stop and Remove Old Container
         run: |
-          docker stop rag-chatbot-app
-          docker rm rag-chatbot-app
+          docker rm -f rag-chatbot-app
         shell: cmd
         continue-on-error: true
 
