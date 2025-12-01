@@ -23,7 +23,7 @@ def _load_retriever():
         collection_name=COLLECTION_NAME,
         embedding_function=embedding_model
     )
-    _retriever = vectordb.as_retriever(search_kwargs={'k': 3}) # k값은 조절 가능
+    _retriever = vectordb.as_retriever(search_kwargs={'k': 10}) # k값은 조절 가능
     return _retriever
 
 def retrieve(query):
