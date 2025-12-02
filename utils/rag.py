@@ -4,7 +4,7 @@ from utils.embedding import get_embedding_model
 from utils.prompt import run_query_analyzer
 import re
 from langchain_core.documents import Document
-
+from utils.llm import get_llm
 
 # --- 설정 ---
 OUTPUT_DIR = './rag_output'
@@ -44,8 +44,7 @@ def filter_by_fields(docs, needed_fields):
         "선수요건": "선수과목과수강요건",
         "선수과목과수강요건": "선수과목과수강요건",
         "별점": "강의평가",
-        "강의평가_장점": "강의평가",
-        "강의평가_단점": "강의평가",
+        "강의평가": "강의평가"
     }
 
     mapped = set(field_map.get(f, f) for f in needed_fields)
@@ -62,34 +61,35 @@ def filter_by_fields(docs, needed_fields):
 
     return final if final else docs
 
-# --------------------------------------------------------
-# 🔥 강의명 + 교수명 기반 dedup
-# --------------------------------------------------------
-def extract_course_key(doc: Document):
-    course = ""
-    prof = ""
+def merge_docs_by_course(docs):
+    merged = {}
 
-    for line in doc.page_content.splitlines():
-        l = line.strip()
-        if l.startswith("강의명:"):
-            course = l.replace("강의명:", "").strip()
-        elif l.startswith("교수명:"):
-            prof = l.replace("교수명:", "").strip()
-        if course and prof:
-            break
-
-    return f"{course}::{prof}" if course or prof else "UNKNOWN"
-
-
-def dedup_by_course(docs):
-    grouped = {}
     for d in docs:
-        key = extract_course_key(d)
-        grouped.setdefault(key, []).append(d)
+        course = d.metadata.get("강의명", "")
+        prof = d.metadata.get("교수명", "")
+        key = f"{course}::{prof}"
 
-    # 우선 가장 score 높은 chunk(=첫 chunk) 사용
-    return [group[0] for group in grouped.values()]
+        if key not in merged:
+            merged[key] = {
+                "metadata": {"강의명": course, "교수명": prof},
+                "contents": []
+            }
 
+        # page_content 추가 (순서 유지)
+        merged[key]["contents"].append(d.page_content)
+
+    # 최종 Document 리스트 생성
+    final_docs = []
+    for key, value in merged.items():
+        combined_content = "\n\n".join(value["contents"])
+        final_docs.append(
+            Document(
+                metadata=value["metadata"],
+                page_content=combined_content
+            )
+        )
+
+    return final_docs
 
 # --------------------------------------------------------
 # 🎯 최종 retrieve(query)
@@ -104,16 +104,16 @@ def retrieve(query: str, pipe, tokenizer, vectordb):
     print(f"🔍 Query Analyzer → k={k}, 필요정보={needed_fields}")
 
     #---------- 2) similarity search ----------
-    results = vectordb.similarity_search_with_score(query, k=k)
+    results = vectordb.similarity_search_with_score(query, k=10)
     docs = [r[0] for r in results]
     if not docs:
         return ""
     
-    # ----------  dedup(중복 강의 제거) ----------
-    dedup_docs = dedup_by_course(docs)
     # #---------- 필요 정보 기반 필터링 ----------
-    filtered_docs = filter_by_fields(dedup_docs, needed_fields)
+    filtered_docs = filter_by_fields(docs, needed_fields)
 
-    context_str = "\n\n".join([d.page_content for d in filtered_docs])
-
+    # #---------- 같은 헤더 문서 병합 ----------
+    merged_docs =  merge_docs_by_course(filtered_docs)
+    context_str = "\n\n".join([d.page_content for d in merged_docs])
+    # context_str = "\n\n".join([d.page_content for d in docs])
     return context_str
