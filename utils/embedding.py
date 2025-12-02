@@ -1,7 +1,7 @@
 import torch
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 
-def get_embedding_model(model_name="Snowflake/snowflake-arctic-embed-l-v2.0", cache_folder="./"):
+def get_embedding_model(model_name="Snowflake/snowflake-arctic-embed-l-v2.0", cache_folder="./models"):
     """
     임베딩 모델을 로드하여 반환합니다.
     - model_name: 사용할 모델 이름 (기본값 설정됨)
@@ -29,5 +29,5 @@ def get_embedding_model(model_name="Snowflake/snowflake-arctic-embed-l-v2.0", ca
             "prompt_name": "query" 
         }
     )
-    
+    print("✅ Embeddingmodel 로드 완료!")
     return embedding_model

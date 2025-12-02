@@ -95,6 +95,8 @@ def extract_answer(generated_text):
     """
     if '</think>' in generated_text:
         return generated_text.split('</think>', 1)[1].strip()
+    else:
+        return generated_text.strip()
 
 
 def run_query_analyzer(query: str, pipe, tokenizer):
@@ -112,7 +114,6 @@ def run_query_analyzer(query: str, pipe, tokenizer):
 
     raw = pipe(applied, max_new_tokens=512, do_sample=False)
     txt = extract_answer(raw[0]["generated_text"])
-
     match = re.search(r"\{.*\}", txt, re.DOTALL)
     if not match:
         return {"k": 10, "필요 정보": []}

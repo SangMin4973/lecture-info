@@ -1,8 +1,10 @@
 import os
 from langchain_community.vectorstores import Chroma
-from embedding import get_embedding_model
-from prompt import run_query_analyzer
+from utils.embedding import get_embedding_model
+from utils.prompt import run_query_analyzer
 import re
+from langchain_core.documents import Document
+
 
 # --- 설정 ---
 OUTPUT_DIR = './rag_output'
@@ -60,7 +62,33 @@ def filter_by_fields(docs, needed_fields):
 
     return final if final else docs
 
+# --------------------------------------------------------
+# 🔥 강의명 + 교수명 기반 dedup
+# --------------------------------------------------------
+def extract_course_key(doc: Document):
+    course = ""
+    prof = ""
 
+    for line in doc.page_content.splitlines():
+        l = line.strip()
+        if l.startswith("강의명:"):
+            course = l.replace("강의명:", "").strip()
+        elif l.startswith("교수명:"):
+            prof = l.replace("교수명:", "").strip()
+        if course and prof:
+            break
+
+    return f"{course}::{prof}" if course or prof else "UNKNOWN"
+
+
+def dedup_by_course(docs):
+    grouped = {}
+    for d in docs:
+        key = extract_course_key(d)
+        grouped.setdefault(key, []).append(d)
+
+    # 우선 가장 score 높은 chunk(=첫 chunk) 사용
+    return [group[0] for group in grouped.values()]
 
 
 # --------------------------------------------------------
@@ -75,16 +103,17 @@ def retrieve(query: str, pipe, tokenizer, vectordb):
 
     print(f"🔍 Query Analyzer → k={k}, 필요정보={needed_fields}")
 
-    # ---------- 2) similarity search ----------
+    #---------- 2) similarity search ----------
     results = vectordb.similarity_search_with_score(query, k=k)
     docs = [r[0] for r in results]
-    scores = [r[1] for r in results]
-
     if not docs:
         return ""
+    
+    # ----------  dedup(중복 강의 제거) ----------
+    dedup_docs = dedup_by_course(docs)
+    # #---------- 필요 정보 기반 필터링 ----------
+    filtered_docs = filter_by_fields(dedup_docs, needed_fields)
 
-    # ---------- 필요 정보 기반 필터링 ----------
-    docs = filter_by_fields(docs, needed_fields)
+    context_str = "\n\n".join([d.page_content for d in filtered_docs])
 
-    context_str = "\n\n".join([d.page_content for d in docs])
     return context_str
