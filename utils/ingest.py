@@ -1,217 +1,241 @@
 import os
-import pandas as pd
-import numpy as np
 import torch
 from tqdm import tqdm
-import pickle
+import chromadb
 
-# LangChain 및 관련 모듈
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-import chromadb
-from langchain_core.documents import Document
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))   # final-project-a-lecture-info/
 
-# --- 경로 및 설정 ---
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+
+# --- 경로 설정 ---
 output_dir = os.path.join(BASE_DIR, "rag_output")
-collection_name = 'lecture_info'
-model_name = "Snowflake/snowflake-arctic-embed-l-v2.0"
-cache_folder = './'
-
-# --- 1. ChromaDB 클라이언트 및 컬렉션 초기화 ---
-vectordb_dir = os.path.join(output_dir, 'vectordb')
+vectordb_dir = os.path.join(output_dir, "vectordb")
 os.makedirs(vectordb_dir, exist_ok=True)
-client = chromadb.PersistentClient(path=vectordb_dir)
+
+cache_folder = './models'
 data_path = os.path.join(BASE_DIR, "data", "text_data.txt")
+collection_name = "lecture_info"
+model_name = "Snowflake/snowflake-arctic-embed-l-v2.0"
 
-# 컬렉션 삭제 (재실행 대비)
-try:
-    client.delete_collection(name=collection_name)
-    print(f"✅ '{collection_name}' collection이 삭제되었습니다.")
-except Exception as e:
-    # 컬렉션이 없으면 무시
-    print(f"⚠️ 컬렉션 삭제 중 오류 발생 (이미 없을 수 있음): {e}")
 
-# --- 2. 임베딩 모델 정의 ---
+# ===============================
+# 1. Embedding Model
+# ===============================
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 print(f"🛠️ Embedding device: {device}")
-
-# # SentenceTransformerEmbeddings에 전달할 최종 model_kwargs 구성 (오류 해결 반영)
-# final_model_kwargs = {
-#     "device": device,
-# }
-# if "cuda" in device:
-#     final_model_kwargs["torch_dtype"] = torch.float16
-
 
 embedding_model = SentenceTransformerEmbeddings(
     model_name=model_name,
     cache_folder=cache_folder,
-    encode_kwargs={
-        "normalize_embeddings": True,
-        "prompt_name": "query"  # query prefix 자동 적용
-    }
+    encode_kwargs={"normalize_embeddings": True, "prompt_name": "query"},
 )
 
-# --- 3. 데이터 로딩 및 전처리 함수 정의 (Pandas 로직 대신 텍스트 파싱 로직 적용) ---
 
-# 기존 set_form 함수와 get_docs_csv 함수는 사용하지 않으므로 삭제 또는 주석 처리했습니다.
-
-
-
-def parse_lecture_info(text_block):
-    """단일 강의 정보 블록 텍스트를 파싱하여 Dictionary 형태로 반환합니다."""
-    metadata = {}
+# ===============================
+# 2. 라인 파싱
+# ===============================
+def parse_metadata(line):
+    meta = {}
+    fields = line.split("#")
     
-    # '필드명:값' 형태의 쌍이 ' - '로 분리되어 있다고 가정
-    fields = text_block.strip().split('#')
-    
-    for field in fields:
-        # 각 필드는 '키:값' 형태로 되어 있음. 콜론을 기준으로 분리
-        if ':' in field:
-            # 첫 번째 콜론만 구분자로 사용
-            key, value = field.split(':', 1)
-            metadata[key.strip()] = value.strip()
-    
-    return metadata
+    for f in fields:
+        if ":" in f:
+            k, v = f.split(":", 1)
+            meta[k.strip()] = v.strip()
+    return meta
 
 
-def get_docs_from_file(file_path):
-    """
-    특정 포맷의 텍스트 파일을 읽어 LangChain Document 객체 리스트로 반환합니다.
-    (강의평가 필드 포함 버전)
-    """
-    print(f"📖 파일 로드 중: {file_path}")
-    
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-            # 파일 내용을 줄바꿈으로 분리하고, 공백인 줄은 제거하여 강의 정보 블록 리스트를 만듭니다.
-            lecture_blocks = [block.strip() for block in content.split('\n') if block.strip()]
-    except Exception as e:
-        print(f"❌ 파일 읽기 오류: {file_path}, {e}")
-        return []
+# ===============================
+# 3. 강의 단위로 여러 줄 merge
+# ===============================
+def load_and_merge_lectures(path):
+    with open(path, "r", encoding="utf-8") as f:
+        lines = [ln.strip() for ln in f.readlines() if ln.strip()]
 
-    docs = []
-    
-    for block_text in lecture_blocks:
-        if not block_text:
+    lectures = {}
+
+    for line in lines:
+        meta = parse_metadata(line)
+
+        course = meta.get("강의명")
+        prof = meta.get("교수명")
+
+        if not course or not prof:
             continue
-            
-        metadata = parse_lecture_info(block_text)
-        
-        course_name = metadata.get('강의명', '미정 강의')
-        professor_name = metadata.get('교수명', '미상 교수')
-        department = metadata.get('학부명', None)
-        major = metadata.get('학과명', None)
-        
-        # 문서의 주 내용은 '학습내용', '수업진행방식', '선수과목과수강요건' 그리고 강의평가를 조합
-        page_content_parts = []
-        
-        course_type = metadata.pop('이수구분', None)
-        if course_type:
-            page_content_parts.append(f"**이수구분:** {course_type}")
-            
-        # 1. 학습내용 추출 및 본문 추가 (pop)
-        learning_content = metadata.pop('학습내용', None)
-        if learning_content:
-            page_content_parts.append(f"**학습 내용:** {learning_content}")
-            
-        # 2. 수업진행방식 추출 및 본문 추가 (pop)
-        method_content = metadata.pop('수업진행방식', None)
-        if method_content:
-            page_content_parts.append(f"**수업 방식:** {method_content}")
-            
-        # 3. 선수과목과수강요건 추출 및 본문 추가 (pop)
-        prerequisite = metadata.pop('선수과목과수강요건', None)
-        if prerequisite:
-            page_content_parts.append(f"**선수 요건:** {prerequisite}")
-            
-        # 4. 강의평가 관련 필드 추출 및 본문 추가 (새로 추가된 로직)
-        review_score = metadata.pop('별점', None)
-        review_low = metadata.pop('강의평가_낮음', None)
-        review_high = metadata.pop('강의평가_높음', None)
-        
-        review_parts = []
-        if review_score:
-            review_parts.append(f"별점: {review_score}")
-        if review_low and review_low != '없음': # '없음' 필터링 추가
-            review_parts.append(f"단점: {review_low}")
-        if review_high and review_high != '없음': # '없음' 필터링 추가
-            review_parts.append(f"장점: {review_high}")
-            
-        if review_parts:
-            # 강의 평가 정보를 하나의 블록으로 묶어 본문에 추가
-            page_content_parts.append(f"**강의 평가 정보:** {' / '.join(review_parts)}")
 
+        key = f"{course}_{prof}"
 
-        page_content = "\n".join(page_content_parts)
-        
-        # 내용이 충분히 길 때만 Document로 생성 (메타데이터만 있는 줄은 제외)
-        if len(page_content) > 10:
-            
-            # 남은 필드들과 'source', 'title'을 정리
-            final_metadata = {
-                'source': file_path, 
-                'title': f"{department}-{major}-{course_name} ({professor_name})", 
-                **metadata 
+        if key not in lectures:
+            lectures[key] = {
+                "학부명": None,
+                "학과명": None,
+                "강의명": course,
+                "교수명": prof,
+
+                "이수구분": [],
+                "선수과목과수강요건": [],
+
+                "학습내용": [],
+                "수업진행방식": [],
+
+                "별점": None,
+                "강의평가_낮음": [],
+                "강의평가_높음": [],
             }
-            
-            doc = Document(
-                page_content=page_content,
-                metadata=final_metadata
-            )
-            docs.append(doc)
 
-    print(f"   - 총 {len(docs)}개의 기본 문서(Document)를 로드했습니다.")
+        lec = lectures[key]
+
+        for k, v in meta.items():
+            if k == "이수구분":
+                lec["이수구분"].append(v)
+            elif k == "선수과목과수강요건":
+                lec["선수과목과수강요건"].append(v)
+            elif k == "학습내용":
+                lec["학습내용"].append(v)
+            elif k == "수업진행방식":
+                lec["수업진행방식"].append(v)
+            elif k == "강의평가_낮음":
+                lec["강의평가_낮음"].append(v)
+            elif k == "강의평가_높음":
+                lec["강의평가_높음"].append(v)
+            else:
+                if lec.get(k) is None:
+                    lec[k] = v
+
+    return list(lectures.values())
+
+
+# ===============================
+# 4. Header 생성 (모든 문서 공통)
+# ===============================
+def make_header(meta):
+    return (
+        f"강의명: {meta['강의명']}\n"
+        f"교수명: {meta['교수명']}\n"
+        f"학부명: {meta['학부명']}\n"
+        f"학과명: {meta['학과명']}\n"
+    )
+
+
+# ===============================
+# 5. 강의 → 여러 Document 생성
+# ===============================
+def build_documents(lectures):
+    docs = []
+
+    for meta in lectures:
+        header = make_header(meta)
+
+        # ------------------------ #
+        #  1) 이수구분
+        # ------------------------ #
+        if meta["이수구분"]:
+            body = "\n".join(f"- {v}" for v in meta["이수구분"])
+            text = header + "\n[이수구분]\n" + body
+            docs.append(Document(
+                page_content=text,
+                metadata={"강의명": meta["강의명"], "교수명": meta["교수명"], "type": "이수구분"}
+            ))                
+
+        # ------------------------ #
+        #  1) 선수과목과수강요건
+        # ------------------------ #
+        if meta["선수과목과수강요건"]:
+            body = "\n".join(f"- {v}" for v in meta["선수과목과수강요건"])
+            text = header + "\n[선수과목과수강요건]\n" + body
+            docs.append(Document(
+                page_content=text,
+                metadata={"강의명": meta["강의명"], "교수명": meta["교수명"], "type": "선수과목과수강요건"}
+            ))        
+
+        # ------------------------ #
+        #  1) 학습내용
+        # ------------------------ #
+        if meta["학습내용"]:
+            body = "\n".join(f"- {v}" for v in meta["학습내용"])
+            text = header + "\n[학습내용]\n" + body
+            docs.append(Document(
+                page_content=text,
+                metadata={"강의명": meta["강의명"], "교수명": meta["교수명"], "type": "학습내용"}
+            ))
+
+        # ------------------------ #
+        #  2) 수업진행방식
+        # ------------------------ #
+        if meta["수업진행방식"]:
+            body = "\n".join(f"- {v}" for v in meta["수업진행방식"])
+            text = header + "\n[수업진행방식]\n" + body
+            docs.append(Document(
+                page_content=text,
+                metadata={"강의명": meta["강의명"], "교수명": meta["교수명"], "type": "수업진행방식"}
+            ))
+
+        # ------------------------ #
+        #  3) 강의평가
+        # ------------------------ #
+        eval_text = header + "\n[강의평가]\n"
+        eval_text += f"별점: {meta['별점']}\n\n"
+
+        if meta["강의평가_낮음"]:
+            eval_text += "낮음 리뷰:\n"
+            eval_text += "\n".join(f"- {v}" for v in meta["강의평가_낮음"])
+            eval_text += "\n\n"
+
+        if meta["강의평가_높음"]:
+            eval_text += "높음 리뷰:\n"
+            eval_text += "\n".join(f"- {v}" for v in meta["강의평가_높음"])
+            eval_text += "\n"
+
+        docs.append(Document(
+            page_content=eval_text,
+            metadata={"강의명": meta["강의명"], "교수명": meta["교수명"], "type": "강의평가"}
+        ))
+
     return docs
 
-def add_title(doc):
-    """청크의 page_content 앞에 Title 메타데이터를 추가합니다."""
-    title = doc.metadata.get('title', '')
-    if title:
-        doc.page_content = f"Title : {title}\n\n{doc.page_content}"
-    return doc
 
+# ===============================
+# 6. ingest 실행
+# ===============================
+def run_ingest():
+    print("📌 Step1: 병합")
+    merged = load_and_merge_lectures(data_path)
+    print(f"총 {len(merged)}개 강의 병합 완료")
 
-# --- 4. 벡터화 실행 ---
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=102)
+    print("📌 Step2: Document 생성")
+    docs = build_documents(merged)
+    print(f"총 {len(docs)}개의 Document 생성 완료")
 
-# file_paths = get_file_paths('./data') # 기존 함수 대신 명시된 파일 경로 사용
+    print("📌 Step3: split (필요 시)")
+    splitter = RecursiveCharacterTextSplitter(chunk_size=3000, chunk_overlap=200)
+    split_docs = splitter.split_documents(docs)
+    print(f"split 후 Document 수: {len(split_docs)}")
 
-file_paths = [data_path] # 사용자 입력에 따라 파일 경로 고정
+    with open('ingest.txt', 'w', encoding='utf-8') as f:
+        for doc in split_docs:
+            doc = str(doc)
+            f.write(doc + '\n')
+            f.write('='*50+'\n')
+    print("📌 Step4: VectorDB 생성")
+    client = chromadb.PersistentClient(vectordb_dir)
+    try:
+        client.delete_collection(collection_name)
+    except:
+        pass
 
-doc_list = []
-for file_path in tqdm(file_paths):
-    # 파일 확장자 검사 불필요. 모든 파일이 CSV 형식이라고 가정하고 처리
-    docs = get_docs_from_file(file_path)
-    doc_list.extend(docs)
-
-if doc_list:
-    # 텍스트 분할 (청크 생성)
-    split_docs = text_splitter.split_documents(doc_list)
-    # 청크 내용에 제목 추가
-    split_docs_rev = [add_title(doc) for doc in split_docs]
-    for idx, doc in enumerate(doc_list):
-        doc.metadata["id"] = idx
-    print(f"📚 총 {len(split_docs_rev)}개의 최종 청크가 생성되었습니다.")
-
-    
-    # Chroma 객체 생성 (임베딩 함수 및 persist_directory 설정)
     vectordb = Chroma(
-        persist_directory=vectordb_dir,
         collection_name=collection_name,
-        embedding_function=embedding_model
+        persist_directory=vectordb_dir,
+        embedding_function=embedding_model,
     )
-    
-    # 벡터 DB에 문서 추가
-    print("⏳ 벡터 DB에 문서 추가 중...")
-    vectordb.add_documents(split_docs_rev, embedding=embedding_model)
-    print("✅ 벡터 DB 저장 완료.")
 
-else:
-    print("🛑 로드할 문서가 없습니다. 데이터 파일(.txt)을 확인하세요.")
+    vectordb.add_documents(split_docs)
+    print("✅ RAG ingest 완료!")
 
-print('\n' + '#'*20, '최종 완료', '#'*20)
+
+if __name__ == "__main__":
+    run_ingest()
