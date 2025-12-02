@@ -5,27 +5,36 @@ from utils.prompt import build_prompt, apply_chat_template, extract_answer, anal
 import time
 from pprint import pformat
 
-# 전역 로드 (서버 켜질 때 실행됨)
-MODEL_NAME_MAIN = "Qwen/Qwen3-4B"
-_pipe, _tokenizer = get_llm(MODEL_NAME_MAIN)
-vectordb = _load_vectordb()
+# 글로벌 변수만 선언 (여기서 로드 금지)
+s_pipe = None
+s_tokenizer = None
+vectordb = None
+
+def init_chatbot():
+    global s_pipe, s_tokenizer, vectordb
+
+    MODEL_NAME_SUB = "Qwen/Qwen3-4B"
+    print("🚀 Chatbot 초기화 시작...")
+    s_pipe, s_tokenizer = get_llm(MODEL_NAME_SUB)
+    vectordb = _load_vectordb()
+    print("✅ Chatbot 초기화 완료!")
 
 def chatbot(query: str):
-    print(f"🚀 답변 생성중... (질문: {query})")
-    # 1) RAG 검색 (rag.retrieve 호출)
-    info = retrieve(query, _pipe, _tokenizer, vectordb)
-    # 2) 프롬프트 생성 (prompt 호출)
-    full_prompt = build_prompt(query, info)
-    prompt = apply_chat_template(_tokenizer, full_prompt)
+    global s_pipe, s_tokenizer, vectordb
 
-    # 3) LLM 실행 (Pipeline 사용)
-    # CPU라 느릴 수 있으니 max_new_tokens 조절 가능
-    raw = _pipe(prompt, max_new_tokens=1024, do_sample=False)
+    # 1) RAG 검색
+    context_str = retrieve(query, s_pipe, s_tokenizer, vectordb)
+
+    # 2) 프롬프트 생성
+    full_prompt = build_prompt(query, context_str)
+    prompt = apply_chat_template(s_tokenizer, full_prompt)
+
+    # 3) LLM 실행
+    raw = s_pipe(prompt, max_new_tokens=1024, do_sample=False)
     generated = raw[0]["generated_text"]
 
     # 4) 답변 파싱
     answer = extract_answer(generated)
-    print("✅ 답변 생성 완료")
 
     return answer
 
