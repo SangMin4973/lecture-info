@@ -33,6 +33,61 @@
 
 ---
 
+## 🏗️ 시스템 아키텍처 (Architecture)
+
+본 서비스는 **User Interface**, **Backend Server**, **RAG Engine**의 3계층 구조로 이루어져 있습니다.
+
+```bash
+graph TD
+    User([사용자]) -->|질문 입력| FE[Frontend (Streamlit)]
+    FE -->|REST API 요청| BE[Backend (FastAPI)]
+    
+    subgraph "RAG Engine"
+        BE -->|1. 쿼리 분석| QA[Query Analyzer]
+        QA -->|2. 벡터 검색| VDB[(ChromaDB)]
+        VDB -->|3. 관련 문서 추출| DOCS[Documents]
+        DOCS -->|4. 프롬프트 구성| PMT[Prompt Template]
+        PMT -->|5. 답변 생성| LLM[LLM (Qwen3-4B)]
+    end
+    
+    LLM -->|응답 반환| BE
+    BE -->|답변 출력| FE
+```
+---
+
+## 🚀 실행 방법 (How to Run)
+
+이 프로젝트는 Docker 환경에서의 실행을 권장합니다. (NVIDIA GPU 사용 권장)
+
+### 1. 사전 요구 사항 (Prerequisites)
+* [Docker](https://docs.docker.com/get-docker/)
+* [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) (GPU 가속을 위해 필수)
+* Git LFS (Large File Storage for Models)
+
+### 2. 설치 및 실행 (Docker)
+
+**1) 저장소 복제**
+```bash
+git clone [https://github.com/SKHU-OSS-2025-2/final-project-a-lecture-info.git](https://github.com/SKHU-OSS-2025-2/final-project-a-lecture-info.git)
+cd final-project-a-lecture-info
+```
+
+**2) Docker 이미지 빌드**
+```bash
+docker build -t skhu-lecture-bot .
+```
+
+**3) 컨테이너 실행**
+```bash
+docker run --gpus all -p 8501:8501 -p 8000:8000 --name lecture-bot skhu-lecture-bot
+```
+
+**4) 접속**
+```bash
+Web UI: http://localhost:8501
+API Docs: http://localhost:8000/docs
+```
+
 ## 📂 프로젝트 구조 (Directory Structure)
 
 ```bash
