@@ -3,6 +3,12 @@ from pydantic import BaseModel
 import uvicorn
 import os
 from utils.chatbot import *
+from utils.rag import _load_vectordb
+
+# 전역 로드 (서버 켜질 때 실행됨)
+MODEL_NAME_MAIN = "Qwen/Qwen3-4B"
+_pipe, _tokenizer = get_llm(MODEL_NAME_MAIN)
+vectordb = _load_vectordb()
 
 # Pydantic 모델: 요청 Body 형식 정의
 class ChatRequest(BaseModel):
