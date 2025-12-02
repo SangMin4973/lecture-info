@@ -4,6 +4,7 @@ import os
 from PIL import Image
 import base64
 from io import BytesIO
+import json
 
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000/chat")
 
@@ -105,7 +106,7 @@ st.markdown(f"""
     height: auto;
 }}
 
-/* 하단 전체 영역 다크 */
+/* 하단 전체 영역 다크모드 반영 */
 [data-testid="stBottom"],
 [data-testid="stBottom"] * {{
     background-color: {THEME["block"]} !important;
@@ -114,43 +115,33 @@ st.markdown(f"""
     box-shadow: none !important;
 }}
 
-/* 입력창 및 placeholder */
-[data-testid="stChatInput"] {{
-    background-color: {THEME["block"]} !important;
-}}
+/* 입력창 및 placeholder 애니메이션 */
 textarea[data-testid="stChatInput"] {{
     background-color: {THEME["block"]} !important;
     color: {THEME["text"]} !important;
     border: 1px solid #444 !important;
+    transition: color 0.6s ease-in-out, opacity 0.6s ease-in-out;
 }}
-textarea::placeholder {{
-    color: {THEME["placeholder"]} !important;
+
+/* 입력 중일 때 글자색 연하고 깜빡이는 효과 */
+textarea[data-testid="stChatInput"]:focus {{
+    color: rgba(255,255,255,0.7) !important;
+    animation: typingGlow 1.2s infinite alternate;
 }}
+
+/* placeholder 색상 */
+textarea::placeholder,
 div[data-baseweb="textarea"] textarea::placeholder {{
     color: {THEME["placeholder"]} !important;
+    opacity: 0.6;
+    transition: opacity 0.6s ease-in-out;
 }}
 
-textarea[data-testid="stChatInput"]::placeholder {{
-    color: #FFFFFF !important;
+/* 애니메이션 정의 */
+@keyframes typingGlow {{
+    from {{ opacity: 0.7; }}
+    to {{ opacity: 1; }}
 }}
-
-div[data-baseweb="textarea"],
-div[data-baseweb="input"] {{
-    background-color: {THEME["block"]} !important;
-    color: {THEME["text"]} !important;
-    border-color: #444 !important;
-}}
-div[data-baseweb="textarea"] > div {{
-    background-color: {THEME["block"]} !important;
-}}
-div[data-baseweb="textarea"] textarea {{
-    background-color: {THEME["block"]} !important;
-    color: {THEME["text"]} !important;
-}}
-
-::-webkit-scrollbar {{ width: 8px; }}
-::-webkit-scrollbar-track {{ background: #1A1A1A; }}
-::-webkit-scrollbar-thumb {{ background: #444; border-radius: 4px; }}
 
 .chat-row-left, .chat-row-right {{
     display: flex;
@@ -167,7 +158,6 @@ div[data-baseweb="textarea"] textarea {{
 }}
 .user-bubble {{ background: {THEME["user_bubble"]}; color: {THEME["user_text"]}; }}
 .bot-bubble {{ background: {THEME["bot_bubble"]}; color: {THEME["text"]}; }}
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -185,9 +175,37 @@ with col2:
 
 st.markdown("<div style='margin:40px;'></div>", unsafe_allow_html=True)
 
+
+import json
+import requests
+import streamlit as st
+
+# 초기 세션 상태
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "loading" not in st.session_state:
+    st.session_state.loading = False
+if "pending_prompt" not in st.session_state:
+    st.session_state.pending_prompt = None
 
+# 커스텀 스피너 CSS (말풍선 내부용)
+st.markdown("""
+<style>
+
+
+.inline-spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid #c7d2fe; border-top-color: #4338ca;
+  border-radius: 50%; margin-left: 8px;
+  animation: spin 0.8s linear infinite;
+  vertical-align: text-bottom;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+""", unsafe_allow_html=True)
+
+# 기존 채팅 기록 출력
 for msg in st.session_state.messages:
     if msg["role"] == "assistant":
         st.markdown(
@@ -210,15 +228,69 @@ for msg in st.session_state.messages:
             unsafe_allow_html=True,
         )
 
-prompt = st.chat_input("메시지를 입력하세요...")
+# 입력
+prompt = st.chat_input("질문을 입력하세요")
+
+# 사용자 입력이 있을 때만 로딩 시작 (rerun 시 선출력 방지)
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
+    st.markdown(
+        f"""
+        <div class="chat-row-right">
+            <div class="chat-bubble user-bubble">{prompt}</div>
+            <img src="data:image/png;base64,{user_icon_b64}" class="chat-icon">
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.session_state.loading = True
+    st.session_state.pending_prompt = prompt
 
+# 로딩 중일 때만 봇 로딩 말풍선 렌더링 (커스텀 스피너만)
+answer_placeholder = st.empty()
+if st.session_state.loading and st.session_state.pending_prompt:
+    with answer_placeholder.container():
+        st.markdown(
+            f"""
+            <div class="chat-row-left">
+                <img src="data:image/png;base64,{bot_icon_b64}" class="chat-icon">
+                <div class="chat-bubble bot-bubble">
+                    <span>답변 생성 중...</span>
+                    <span class="inline-spinner"></span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # 서버 요청 (기본 스피너 제거, 조용히 요청 수행)
     try:
-        res = requests.post(API_URL, json={"query": prompt}, timeout=30)
-        answer = res.json().get("answer", "응답 오류")
-    except:
-        answer = "서버와의 통신 중 오류가 발생했습니다."
+        payload = {"query": st.session_state.pending_prompt}
+        response = requests.post(
+            API_URL,
+            data=json.dumps(payload),
+            headers={"Content-Type": "application/json"},
+            timeout=30,
+        )
+        if response.status_code == 200:
+            answer = response.json().get("answer", "오류: 응답 키가 없습니다.")
+        else:
+            answer = f"오류: {response.status_code} - {response.text}"
+    except requests.exceptions.RequestException as e:
+        answer = f"API 서버 연결 오류: {e} (API 주소: {API_URL})"
 
+    # 로딩 말풍선을 최종 답변으로 교체
     st.session_state.messages.append({"role": "assistant", "content": answer})
-    st.rerun()
+    answer_placeholder.markdown(
+        f"""
+        <div class="chat-row-left">
+            <img src="data:image/png;base64,{bot_icon_b64}" class="chat-icon">
+            <div class="chat-bubble bot-bubble">{answer}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # 로딩 상태 해제
+    st.session_state.loading = False
+    st.session_state.pending_prompt = None
