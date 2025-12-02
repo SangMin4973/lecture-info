@@ -11,6 +11,7 @@ _pipe, _tokenizer = get_llm(MODEL_NAME_MAIN)
 vectordb = _load_vectordb()
 
 def chatbot(query: str):
+    print(f"🚀 답변 생성중... (질문: {query})")
     # 1) RAG 검색 (rag.retrieve 호출)
     info = retrieve(query, _pipe, _tokenizer, vectordb)
     # 2) 프롬프트 생성 (prompt 호출)
@@ -24,6 +25,7 @@ def chatbot(query: str):
 
     # 4) 답변 파싱
     answer = extract_answer(generated)
+    print("✅ 답변 생성 완료")
 
     return answer
 
