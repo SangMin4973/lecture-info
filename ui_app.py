@@ -231,9 +231,12 @@ for msg in st.session_state.messages:
 # 입력
 prompt = st.chat_input("질문을 입력하세요")
 
-# 사용자 입력이 있을 때만 로딩 시작 (rerun 시 선출력 방지)
+# ------------------------ 사용자 입력 처리 ------------------------
 if prompt:
+    # 사용자 메시지 UI 저장
     st.session_state.messages.append({"role": "user", "content": prompt})
+
+    # 화면에 사용자 말풍선 표현
     st.markdown(
         f"""
         <div class="chat-row-right">
@@ -243,12 +246,22 @@ if prompt:
         """,
         unsafe_allow_html=True,
     )
+
+    # 로딩 상태 진입
     st.session_state.loading = True
     st.session_state.pending_prompt = prompt
 
-# 로딩 중일 때만 봇 로딩 말풍선 렌더링 (커스텀 스피너만)
-answer_placeholder = st.empty()
-if st.session_state.loading and st.session_state.pending_prompt:
+    # 🔥 여기서 딱 한 번만 rerun → API는 아래 블록에서 "한 번만" 실행됨
+    st.rerun()
+
+
+# ------------------------ 답변 생성 단계 ------------------------
+# 로딩 상태일 때만 답변 생성 과정 실행 (단 한 번만)
+if st.session_state.get("loading") and st.session_state.get("pending_prompt"):
+
+    answer_placeholder = st.empty()
+
+    # 디자인 그대로 로딩 말풍선 출력
     with answer_placeholder.container():
         st.markdown(
             f"""
@@ -263,24 +276,26 @@ if st.session_state.loading and st.session_state.pending_prompt:
             unsafe_allow_html=True,
         )
 
-    # 서버 요청 (기본 스피너 제거, 조용히 요청 수행)
+    # -------------------- API 요청 (🔥딱 1회 실행) --------------------
     try:
         payload = {"query": st.session_state.pending_prompt}
         response = requests.post(
             API_URL,
-            data=json.dumps(payload),
-            headers={"Content-Type": "application/json"},
-            timeout=30,
+            json=payload,
+            timeout=60,   # 안정성 위해 60초로 확장
         )
-        if response.status_code == 200:
-            answer = response.json().get("answer", "오류: 응답 키가 없습니다.")
-        else:
-            answer = f"오류: {response.status_code} - {response.text}"
-    except requests.exceptions.RequestException as e:
-        answer = f"API 서버 연결 오류: {e} (API 주소: {API_URL})"
 
-    # 로딩 말풍선을 최종 답변으로 교체
+        if response.status_code == 200:
+            answer = response.json().get("answer", "오류: 응답 데이터 없음.")
+        else:
+            answer = f"오류 {response.status_code}: {response.text}"
+
+    except Exception as e:
+        answer = f"API 오류: {e} (주소: {API_URL})"
+
+    # -------------------- 응답 출력 --------------------
     st.session_state.messages.append({"role": "assistant", "content": answer})
+
     answer_placeholder.markdown(
         f"""
         <div class="chat-row-left">
@@ -291,6 +306,8 @@ if st.session_state.loading and st.session_state.pending_prompt:
         unsafe_allow_html=True,
     )
 
-    # 로딩 상태 해제
+    # -------------------- 상태 리셋 + 화면 재렌더 --------------------
     st.session_state.loading = False
     st.session_state.pending_prompt = None
+
+    # rerun 없이도 자연스럽게 다음 입력 상자 표시됨
