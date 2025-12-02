@@ -164,6 +164,7 @@ API Docs: http://localhost:8000/docs
 ├── ui_app.py           # Streamlit 프론트엔드 (채팅 UI)
 ├── .github/workflows   # GitHub Actions
 │   └── deploy.yaml
+├── models/             # model 저장 폴더
 ├── .github/workflows   # GitHub Actions
 │   └── config.toml     # Streamlit 배경 설정
 ├── images/s            # Streamlit 이미지 모음
