@@ -1,14 +1,14 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, BitsAndBytesConfig
 
-MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
-CACHE_DIR = "./"
+
+CACHE_DIR = "./models"
 
 # 전역 변수
 _pipe = None
 _tokenizer = None
 
-def get_llm():
+def get_llm(model):
     """
     chatbot.py에서 호출하는 함수.
     GPU 설정이 적용된 Pipeline 객체와 Tokenizer를 반환합니다.
@@ -18,7 +18,7 @@ def get_llm():
     if _pipe is not None and _tokenizer is not None:
         return _pipe, _tokenizer
         
-    print(f"🚀 LLM 모델 로딩 시작 (GPU Mode)... ({MODEL_NAME})")
+    print(f"🚀 LLM 모델 로딩 시작 (GPU Mode)... ({model})")
     try:
         # 1. 4비트 양자화 설정 (GPU 전용)
         bnb_config = BitsAndBytesConfig(
@@ -28,11 +28,11 @@ def get_llm():
         )
 
         # 2. 토크나이저 로드
-        _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        _tokenizer = AutoTokenizer.from_pretrained(model)
         
         # 3. 모델 로드 (GPU 설정 적용)
         model = AutoModelForCausalLM.from_pretrained(
-            MODEL_NAME,
+            model,
             quantization_config=bnb_config, # 4비트 적용
             device_map="auto",              # GPU 자동 할당
             trust_remote_code=True,
