@@ -4,7 +4,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.10-blue) 
 ![Framework](https://img.shields.io/badge/LangChain-1.0-green) 
-![Model](https://img.shields.io/badge/LLM-Qwen2.5--3B-purple) 
+![Model](https://img.shields.io/badge/LLM-Qwen3--4B-purple) 
 ![Deploy](https://img.shields.io/badge/Docker-Enabled-blue) 
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
@@ -24,7 +24,7 @@
 
 | 구분 | 기술 / 도구 | 설명 |
 | :--- | :--- | :--- |
-| **LLM** | **Qwen/Qwen2.5-3B-Instruct** | 한국어 성능이 우수한 3B 경량화 모델 (4-bit Quantization 적용) |
+| **LLM** | **Qwen/Qwen3-4B** | 한국어 성능이 우수한 4B 경량화 모델 (4-bit Quantization 적용) |
 | **Embedding** | **Snowflake/arctic-embed-l-v2.0** | 다국어 및 검색 성능이 최적화된 임베딩 모델 |
 | **Vector DB** | **ChromaDB** | 로컬 환경에서의 문서 벡터 저장 및 검색 |
 | **Backend** | **FastAPI** | REST API 서버 구축 및 모델 서빙 |
@@ -39,11 +39,11 @@
 .
 ├── api_server.py       # FastAPI 백엔드 서버 (LLM 통신)
 ├── ui_app.py           # Streamlit 프론트엔드 (채팅 UI)
-├── ingest.py           # 텍스트 데이터 전처리 및 Vector DB 생성
 ├── data/
 │   └── text_data.txt   # 강의 정보 원본 데이터
 ├── utils/              # 핵심 로직 모듈
 │   ├── chatbot.py      # RAG 파이프라인 제어
+│   ├── ingest.py       # 텍스트 데이터 전처리 및 Vector DB 생성
 │   ├── llm.py          # LLM 모델 로딩 (BitsAndBytes 4-bit)
 │   ├── rag.py          # 문서 검색 (Retriever) 로직
 │   ├── prompt.py       # 프롬프트 엔지니어링 템플릿
