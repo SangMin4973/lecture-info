@@ -37,7 +37,7 @@
 
 본 서비스는 **User Interface**, **Backend Server**, **RAG Engine**의 3계층 구조로 이루어져 있습니다.
 
-```mermaid
+```bash
 graph TD
     User([사용자]) -->|질문 입력| FE[Frontend (Streamlit)]
     FE -->|REST API 요청| BE[Backend (FastAPI)]
