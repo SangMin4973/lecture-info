@@ -1,0 +1,30 @@
+{"id":"EV-001","question":"","query_type":"fact","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-002","question":"","query_type":"fact","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-003","question":"","query_type":"fact","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-004","question":"","query_type":"fact","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-005","question":"","query_type":"fact","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-006","question":"","query_type":"fact","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-007","question":"","query_type":"fact","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-008","question":"","query_type":"fact","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-009","question":"","query_type":"fact","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-010","question":"","query_type":"fact","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-011","question":"","query_type":"conditional","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-012","question":"","query_type":"conditional","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-013","question":"","query_type":"conditional","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-014","question":"","query_type":"conditional","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-015","question":"","query_type":"conditional","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-016","question":"","query_type":"semantic","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-017","question":"","query_type":"semantic","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-018","question":"","query_type":"semantic","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-019","question":"","query_type":"semantic","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-020","question":"","query_type":"semantic","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-021","question":"","query_type":"comparison_recommendation","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-022","question":"","query_type":"comparison_recommendation","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-023","question":"","query_type":"comparison_recommendation","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-024","question":"","query_type":"comparison_recommendation","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-025","question":"","query_type":"comparison_recommendation","answerable":true,"expected_answer":"","expected_fields":[],"relevant_docs":[{"course":"","professor":"","field":""}],"notes":""}
+{"id":"EV-026","question":"","query_type":"unanswerable","answerable":false,"expected_answer":"현재 데이터 범위에서는 답할 수 없다고 말해야 한다.","expected_fields":[],"relevant_docs":[],"notes":""}
+{"id":"EV-027","question":"","query_type":"unanswerable","answerable":false,"expected_answer":"현재 데이터 범위에서는 답할 수 없다고 말해야 한다.","expected_fields":[],"relevant_docs":[],"notes":""}
+{"id":"EV-028","question":"","query_type":"unanswerable","answerable":false,"expected_answer":"현재 데이터 범위에서는 답할 수 없다고 말해야 한다.","expected_fields":[],"relevant_docs":[],"notes":""}
+{"id":"EV-029","question":"","query_type":"unanswerable","answerable":false,"expected_answer":"현재 데이터 범위에서는 답할 수 없다고 말해야 한다.","expected_fields":[],"relevant_docs":[],"notes":""}
+{"id":"EV-030","question":"","query_type":"unanswerable","answerable":false,"expected_answer":"현재 데이터 범위에서는 답할 수 없다고 말해야 한다.","expected_fields":[],"relevant_docs":[],"notes":""}
