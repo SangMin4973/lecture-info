@@ -12,6 +12,7 @@ VECTORDB_DIR = os.path.join(OUTPUT_DIR, 'vectordb')
 COLLECTION_NAME = 'lecture_info'
 
 _retriever = None
+ALLOWED_K = {3, 5, 10}
 
 def _load_vectordb():
     """내부적으로만 사용하는 로더"""
@@ -61,6 +62,15 @@ def filter_by_fields(docs, needed_fields):
 
     return final if final else docs
 
+def validated_top_k(value, default=5):
+    try:
+        top_k = int(value)
+    except (TypeError, ValueError):
+        return default
+    if top_k not in ALLOWED_K:
+        return default
+    return top_k
+
 def merge_docs_by_course(docs):
     merged = {}
 
@@ -98,13 +108,13 @@ def retrieve(query: str, pipe, tokenizer, vectordb):
     
     # ---------- 1) Query Analyzer ----------
     qa = run_query_analyzer(query, pipe, tokenizer)
-    k = qa.get("k", 10)
-    needed_fields = qa.get("필요 정보", [])
+    k = validated_top_k(qa.get("top_k", qa.get("k")), default=5)
+    needed_fields = qa.get("required_fields") or qa.get("필요 정보", [])
 
     print(f"🔍 Query Analyzer → k={k}, 필요정보={needed_fields}")
 
     #---------- 2) similarity search ----------
-    results = vectordb.similarity_search_with_score(query, k=10)
+    results = vectordb.similarity_search_with_score(query, k=k)
     docs = [r[0] for r in results]
     if not docs:
         return ""
