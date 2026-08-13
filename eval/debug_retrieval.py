@@ -19,6 +19,7 @@ DEFAULT_MODEL = "Qwen/Qwen3-4B"
 DEFAULT_DATASET = ROOT_DIR / "eval" / "evaluation_dataset.jsonl"
 DEFAULT_OUTPUT_DIR = ROOT_DIR / "eval" / "results"
 FIXED_BASELINE_K = 10
+ALLOWED_K = {3, 5, 10}
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -63,6 +64,16 @@ def serialize_doc(doc: Any, score: float | None = None, preview_chars: int = 500
     return item
 
 
+def validated_top_k(value: Any, default: int = 5) -> int:
+    try:
+        top_k = int(value)
+    except (TypeError, ValueError):
+        return default
+    if top_k not in ALLOWED_K:
+        return default
+    return top_k
+
+
 def analyze_one(
     query: str,
     pipe: Any,
@@ -73,13 +84,15 @@ def analyze_one(
     merge_docs_by_course: Any,
     *,
     fixed_k: int,
+    adaptive: bool,
     preview_chars: int,
 ) -> dict[str, Any]:
     analyzer = run_query_analyzer(query, pipe, tokenizer)
-    analyzer_k = analyzer.get("k", fixed_k)
-    needed_fields = analyzer.get("필요 정보", [])
+    analyzer_k = validated_top_k(analyzer.get("top_k", analyzer.get("k")), default=5)
+    actual_retrieval_k = analyzer_k if adaptive else fixed_k
+    needed_fields = analyzer.get("required_fields") or analyzer.get("필요 정보", [])
 
-    raw_results = vectordb.similarity_search_with_score(query, k=fixed_k)
+    raw_results = vectordb.similarity_search_with_score(query, k=actual_retrieval_k)
     raw_docs = [doc for doc, _score in raw_results]
     filtered_docs = filter_by_fields(raw_docs, needed_fields)
     merged_docs = merge_docs_by_course(filtered_docs)
@@ -89,7 +102,12 @@ def analyze_one(
         "analyzer": analyzer,
         "analyzer_k": analyzer_k,
         "baseline_search_k": fixed_k,
+        "actual_retrieval_k": actual_retrieval_k,
+        "retrieved_count": len(raw_results),
         "needed_fields": needed_fields,
+        "required_fields": needed_fields,
+        "metadata_hints": analyzer.get("metadata_hints", {}),
+        "information_scope": analyzer.get("information_scope"),
         "retrieved_documents": [
             serialize_doc(doc, score, preview_chars) for doc, score in raw_results
         ],
@@ -126,6 +144,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", help="Output JSONL path.")
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"LLM model. Default: {DEFAULT_MODEL}")
     parser.add_argument("--fixed-k", type=int, default=FIXED_BASELINE_K, help="Baseline retrieval k.")
+    parser.add_argument("--adaptive", action="store_true", help="Use analyzer top_k as retrieval k.")
     parser.add_argument("--preview-chars", type=int, default=500, help="Saved content preview length.")
     return parser.parse_args()
 
@@ -168,6 +187,7 @@ def main() -> None:
                 filter_by_fields,
                 merge_docs_by_course,
                 fixed_k=args.fixed_k,
+                adaptive=args.adaptive,
                 preview_chars=args.preview_chars,
             )
             result["id"] = row.get("id")

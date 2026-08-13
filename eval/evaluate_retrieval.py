@@ -7,7 +7,20 @@ from typing import Any
 
 DEFAULT_INPUT = Path("eval/results/baseline_k10_debug.jsonl")
 DEFAULT_OUTPUT = Path("eval/results/baseline_k10_metrics.json")
-DEFAULT_K_VALUES = [1, 3, 5, 10]
+DEFAULT_K_VALUES = [1, 3, 5, 10, 15]
+FIELD_ALIASES = {
+    "이수구분": "이수구분",
+    "선수요건": "선수과목과수강요건",
+    "선수과목": "선수과목과수강요건",
+    "선수과목과수강요건": "선수과목과수강요건",
+    "학습내용": "학습내용",
+    "수업방식": "수업진행방식",
+    "수업진행방식": "수업진행방식",
+    "별점": "강의평가",
+    "평점": "강의평가",
+    "강의평": "강의평가",
+    "강의평가": "강의평가",
+}
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -46,6 +59,15 @@ def relevant_key(doc: dict[str, Any]) -> tuple[str, str, str]:
     )
 
 
+def normalize_fields(fields: list[str]) -> list[str]:
+    normalized = []
+    for field in fields or []:
+        mapped = FIELD_ALIASES.get(normalize(field))
+        if mapped and mapped not in normalized:
+            normalized.append(mapped)
+    return normalized
+
+
 def is_relevant_match(retrieved: dict[str, Any], relevant: dict[str, Any]) -> bool:
     retrieved_course, retrieved_professor, retrieved_field = doc_key(retrieved)
     relevant_course, relevant_professor, relevant_field = relevant_key(relevant)
@@ -54,6 +76,7 @@ def is_relevant_match(retrieved: dict[str, Any], relevant: dict[str, Any]) -> bo
         return False
     if relevant_professor and retrieved_professor != relevant_professor:
         return False
+    # Empty/null relevant field is an explicit wildcard for header-level questions.
     if relevant_field and retrieved_field != relevant_field:
         return False
     return True
@@ -77,12 +100,16 @@ def relevant_hit_count(
 
 
 def field_overlap(analyzer_fields: list[str], expected_fields: list[str]) -> dict[str, Any]:
-    analyzer_set = {normalize(field) for field in analyzer_fields if normalize(field)}
-    expected_set = {normalize(field) for field in expected_fields if normalize(field)}
+    analyzer_set = set(normalize_fields(analyzer_fields))
+    expected_set = set(normalize_fields(expected_fields))
     overlap = analyzer_set & expected_set
 
-    precision = len(overlap) / len(analyzer_set) if analyzer_set else 0.0
-    recall = len(overlap) / len(expected_set) if expected_set else 0.0
+    if not analyzer_set and not expected_set:
+        precision = 1.0
+        recall = 1.0
+    else:
+        precision = len(overlap) / len(analyzer_set) if analyzer_set else 0.0
+        recall = len(overlap) / len(expected_set) if expected_set else 1.0
 
     return {
         "precision": precision,
@@ -100,6 +127,9 @@ def empty_metric_bucket(k_values: list[int]) -> dict[str, Any]:
         "recall": {f"Recall@{k}": 0.0 for k in k_values},
         "field_precision": 0.0,
         "field_recall": 0.0,
+        "scope_accuracy": 0.0,
+        "scope_count": 0,
+        "average_retrieved_documents": 0.0,
     }
 
 
@@ -120,8 +150,20 @@ def evaluate(rows: list[dict[str, Any]], k_values: list[int]) -> dict[str, Any]:
         retrieved_docs = row.get("retrieved_documents") or []
         relevant_docs = row.get("relevant_docs") or []
         expected_fields = row.get("expected_fields") or []
-        needed_fields = row.get("needed_fields") or []
+        analyzer = row.get("analyzer") or {}
+        needed_fields = (
+            row.get("required_fields")
+            or analyzer.get("required_fields")
+            or row.get("needed_fields")
+            or analyzer.get("필요 정보")
+            or []
+        )
+        expected_scope = normalize(row.get("expected_scope"))
+        actual_scope = normalize(row.get("information_scope") or analyzer.get("information_scope"))
         field_score = field_overlap(needed_fields, expected_fields)
+        scope_match = (
+            1.0 if expected_scope and actual_scope and expected_scope == actual_scope else 0.0
+        )
 
         query_result = {
             "id": row.get("id"),
@@ -129,6 +171,11 @@ def evaluate(rows: list[dict[str, Any]], k_values: list[int]) -> dict[str, Any]:
             "query": row.get("query"),
             "analyzer_k": row.get("analyzer_k"),
             "baseline_search_k": row.get("baseline_search_k"),
+            "actual_retrieval_k": row.get("actual_retrieval_k", row.get("baseline_search_k")),
+            "retrieved_count": row.get("retrieved_count", len(retrieved_docs)),
+            "expected_scope": expected_scope or None,
+            "information_scope": actual_scope or None,
+            "scope_match": scope_match if expected_scope else None,
             "field_precision": field_score["precision"],
             "field_recall": field_score["recall"],
             "field_missing": field_score["missing"],
@@ -141,6 +188,10 @@ def evaluate(rows: list[dict[str, Any]], k_values: list[int]) -> dict[str, Any]:
             bucket["count"] += 1
             bucket["field_precision"] += field_score["precision"]
             bucket["field_recall"] += field_score["recall"]
+            bucket["average_retrieved_documents"] += len(retrieved_docs)
+            if expected_scope:
+                bucket["scope_accuracy"] += scope_match
+                bucket["scope_count"] += 1
 
         for k in k_values:
             matched = relevant_hit_count(retrieved_docs, relevant_docs, k)
@@ -173,6 +224,8 @@ def evaluate(rows: list[dict[str, Any]], k_values: list[int]) -> dict[str, Any]:
                 "query": row.get("query"),
                 "analyzer_k": row.get("analyzer_k"),
                 "needed_fields": row.get("needed_fields"),
+                "required_fields": row.get("required_fields"),
+                "information_scope": row.get("information_scope"),
                 "top_3_retrieved": [
                     {
                         "course": doc.get("course"),
@@ -210,6 +263,9 @@ def finalize_bucket(bucket: dict[str, Any]) -> None:
 
     bucket["field_precision"] = bucket["field_precision"] / count
     bucket["field_recall"] = bucket["field_recall"] / count
+    bucket["average_retrieved_documents"] = bucket["average_retrieved_documents"] / count
+    if bucket["scope_count"]:
+        bucket["scope_accuracy"] = bucket["scope_accuracy"] / bucket["scope_count"]
 
 
 def print_summary(result: dict[str, Any]) -> None:
@@ -227,6 +283,8 @@ def print_summary(result: dict[str, Any]) -> None:
         print(f"- {key}: {value:.4f}")
     print(f"- Analyzer Field Precision: {overall['field_precision']:.4f}")
     print(f"- Analyzer Field Recall: {overall['field_recall']:.4f}")
+    print(f"- Scope Accuracy: {overall['scope_accuracy']:.4f}")
+    print(f"- Average Retrieved Documents: {overall['average_retrieved_documents']:.2f}")
 
     print("\nBy query type")
     for query_type, bucket in result["by_query_type"].items():
