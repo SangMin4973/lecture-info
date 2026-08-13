@@ -57,7 +57,7 @@ DARK_THEME = {
 # 토글 + 라벨
 col_toggle, col_label = st.columns([0.3, 6])
 with col_toggle:
-    mode = st.toggle("", key="dark_mode")
+    mode = st.toggle("Dark mode", key="dark_mode", label_visibility="collapsed")
 
 THEME = DARK_THEME if mode else LIGHT_THEME
 
@@ -164,7 +164,7 @@ div[data-baseweb="textarea"] textarea::placeholder {{
 # Header area
 col1, col2 = st.columns([2, 6])
 with col1:
-    st.image(THEME["lecturebot"], use_container_width=True)
+    st.image(THEME["lecturebot"], width="stretch")
 with col2:
     st.markdown(f"<h1 style='color:{THEME['text']}; font-weight:800;'>SKHU Lecture Info</h1>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:{THEME['text']}; font-size:18px;'>2025-2학기 강의계획서 및 에브리타임 강의평가 기반 강의 정보 제공</p>", unsafe_allow_html=True)
