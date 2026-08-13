@@ -10,7 +10,7 @@
 - Retrieval metric script `eval/evaluate_retrieval.py`를 작성했다.
 - `Hit@1/3/5/10`, `Recall@1/3/5/10`, query type별 metric, Analyzer Field Precision/Recall을 계산했다.
 - metric 결과를 `eval/results/baseline_k10_metrics.json`에 저장했다.
-- `Docs/baseline-k10-metrics.md`에 baseline 결과, 해석, 실패 케이스 분석을 기록했다.
+- `Docs/evaluation/baseline-k10-metrics.md`에 baseline 결과, 해석, 실패 케이스 분석을 기록했다.
 
 ## 나온 숫자
 
@@ -76,4 +76,3 @@ k=10: 15개
 - 그 다음 Adaptive Top-K를 실제 retrieval에 연결한다.
   - 현재 `similarity_search_with_score(query, k=10)` 고정을 Analyzer의 `k`로 바꾸는 실험을 진행한다.
 - Adaptive Top-K 적용 후 fixed `k=10` baseline과 같은 metric으로 비교한다.
-
